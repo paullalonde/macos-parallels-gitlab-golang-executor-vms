@@ -1,0 +1,13 @@
+---
+
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: auto_silent
+
+      keychain_certificates:
+{% for item in keychain_certificates %}
+        - file: {{ item.file }}
+          password: {{ item.password | trim }}
+{% endfor %}

@@ -1,0 +1,97 @@
+---
+
+- become: true
+  block:
+    - name: Gitlab executor group
+      group:
+        name: "{{ user_name }}"
+
+    - name: Gitlab executor user
+      user:
+        name: "{{ user_name }}"
+        password: "{{ user_password | trim }}"
+        comment: GitLab Executor
+        groups:
+          - "{{ user_name }}"
+          - _developer
+          - com.apple.access_ssh
+        hidden: true
+        shell: /bin/bash
+
+    - name: Gitlab executor directories
+      file:
+        path: /Users/{{ user_name }}/{{ item }}
+        state: directory
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: 'u=rwx,g=,o='
+      loop:
+        - .ssh
+        - .temp
+        - go
+        - go/bin
+      notify: clean-executor-temp-dir
+
+    - name: Create bash profile
+      template:
+        src: .bash_profile
+        dest: /Users/{{ user_name }}/.bash_profile
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: 'u=rw,g=,o='
+
+    - name: Copy certificates
+      copy:
+        src: "{{ item.file }}"
+        dest: /Users/{{ user_name }}/.temp/{{ item.file }}
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: 'u=rw,g=,o='
+      loop: "{{ keychain_certificates }}"
+      loop_control:
+        label: "{{ item.file }}"
+
+    - name: Copy user playbook
+      template:
+        src: "{{ item }}"
+        dest: /Users/{{ user_name }}/.temp
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: 'u=rw,g=,o='
+      loop:
+        - user-playbook.yaml
+        - user-inventory.yaml
+        - ansible.cfg
+
+    - name: Copy user playbook script
+      template:
+        src: run-user-playbook.sh
+        dest: /Users/{{ user_name }}/.temp
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: 'u=rwx,g=,o='
+
+    - name: Run user playbook
+      command:
+        argv:
+          - login
+          - -f
+          - "{{ user_name }}"
+          - /Users/{{ user_name }}/.temp/run-user-playbook.sh
+      register: run_user_playbook
+
+    - name: Display user playbook log
+      debug:
+        msg: "{{ run_user_playbook.stdout }}"
+
+    # - name: Authorize SSH public key
+    #   ansible.posix.authorized_key:
+    #     user: gitlab-runner
+    #     key: "{{ lookup('file', 'hosts/' + inventory_hostname + '/runner-ssh-key.pub') }}"
+    #     manage_dir: false
+
+    # - name: Create executor SSH key
+    #   community.crypto.openssh_keypair:
+    #     path: /Users/gitlab-runner/.ssh/gitlab-executor
+    #     owner: gitlab-runner
+    #     group: staff

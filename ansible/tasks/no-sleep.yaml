@@ -1,0 +1,18 @@
+---
+
+- name: Disable computer sleep
+  block:
+    - name: Read computer sleep setting
+      command:
+        cmd: systemsetup -getcomputersleep
+      register: system_setup_get_computer_sleep
+      changed_when: false
+
+    - name: Is the computer configured to sleep?
+      set_fact:
+        computer_sleep_setting: "{{ system_setup_get_computer_sleep.stdout | regex_search('Never$') | default('') }}"
+
+    - name: Disable computer sleep
+      command:
+        cmd: systemsetup -setcomputersleep 0
+      when: computer_sleep_setting == ""
