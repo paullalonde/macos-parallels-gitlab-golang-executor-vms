@@ -28,6 +28,7 @@
       loop:
         - .ssh
         - .temp
+        - bin
         - go
         - go/bin
       notify: clean-executor-temp-dir
@@ -39,6 +40,14 @@
         owner: "{{ user_name }}"
         group: "{{ user_name }}"
         mode: 'u=rw,g=,o='
+
+    - name: Copy prepare-executor script
+      template:
+        src: prepare-executor.sh
+        dest: /Users/{{ user_name }}/bin
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: 'u=rwx,g=,o='
 
     - name: Copy certificates
       copy:
