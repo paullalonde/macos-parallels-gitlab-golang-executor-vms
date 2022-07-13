@@ -29,6 +29,8 @@
         - .ssh
         - .temp
         - bin
+        - builds
+        - caches
         - go
         - go/bin
       notify: clean-executor-temp-dir
