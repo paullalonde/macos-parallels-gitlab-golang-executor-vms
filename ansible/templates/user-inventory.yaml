@@ -11,3 +11,8 @@ all:
         - file: {{ item.file }}
           password: {{ item.password | trim }}
 {% endfor %}
+
+      apple_credentials:
+        user: {{ apple_developer_program_credentials.user }}
+        password: {{ apple_developer_program_credentials.password | trim }}
+        provider: {{ apple_developer_program_credentials.provider | trim }}

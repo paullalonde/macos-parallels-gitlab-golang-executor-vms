@@ -3,3 +3,5 @@ vms/
 .env
 .DS_Store
 /notes.txt
+vaultpw
+ciphertext

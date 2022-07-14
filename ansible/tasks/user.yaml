@@ -94,6 +94,12 @@
     - name: Display user playbook log
       debug:
         msg: "{{ run_user_playbook.stdout }}"
+      when: run_user_playbook.stdout != ""
+
+    - name: Display user playbook error log
+      debug:
+        msg: "{{ run_user_playbook.stderr }}"
+      when: run_user_playbook.stdout == ""
 
     # - name: Authorize SSH public key
     #   ansible.posix.authorized_key:

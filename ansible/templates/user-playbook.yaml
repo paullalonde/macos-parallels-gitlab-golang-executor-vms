@@ -55,6 +55,21 @@
           loop_control:
             label: "{{ '{{' }} item.file {{ '}}' }}"
 
+        - name: Import Apple developer program credentials
+          command:
+            argv:
+              - security
+              - add-generic-password
+              - -s
+              - apple-developer-program
+              - -l
+              - Apple Developer Program ({{ '{{' }} apple_credentials.user {{ '}}' }})
+              - -a
+              - "{{ '{{' }} apple_credentials.user {{ '}}' }}"
+              - -w
+              - "{{ '{{' }} apple_credentials | to_json {{ '}}' }}"
+              - executor
+
         - name: Allow Apple tools to access signing keys
           command:
             argv:
@@ -75,6 +90,33 @@
               - user
               - -s
               - executor
+
+        - name: Read keychain search list
+          command:
+            argv:
+              - security
+              - list-keychains
+          register: keychain_list
+          changed_when: false
+
+        - name: Show keychain search list
+          debug:
+            msg: "{{ '{{' }} keychain_list.stdout {{ '}}' }}"
+
+        - name: List certificates
+          command:
+            argv:
+              - security
+              - find-certificate
+              - -a
+              - -Z
+              - executor
+          register: certificate_list
+          changed_when: false
+
+        - name: Show certificates
+          debug:
+            msg: "{{ '{{' }} certificate_list.stdout {{ '}}' }}"
 
     - name: Install golang packages
       command: go get {{ '{{' }} item {{ '}}' }}
