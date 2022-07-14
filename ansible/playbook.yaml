@@ -18,10 +18,3 @@
         dest: /tmp/install-golangci-lint.sh
         state: absent
       listen: clean-golangci-lint-install
-
-    - name: Clean up gitlab-executor temp directory
-      become: true
-      file:
-        dest: /Users/{{ user_name }}/.temp/
-        state: absent
-      listen: clean-executor-temp-dir

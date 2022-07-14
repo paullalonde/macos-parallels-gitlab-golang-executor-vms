@@ -4,15 +4,15 @@
   block:
     - name: Gitlab executor group
       group:
-        name: "{{ user_name }}"
+        name: "{{ executor_user }}"
 
     - name: Gitlab executor user
       user:
-        name: "{{ user_name }}"
-        password: "{{ user_password | trim }}"
+        name: "{{ executor_user }}"
+        password: "{{ executor_password | trim }}"
         comment: GitLab Executor
         groups:
-          - "{{ user_name }}"
+          - "{{ executor_user }}"
           - _developer
           - com.apple.access_ssh
         hidden: true
@@ -20,95 +20,52 @@
 
     - name: Gitlab executor directories
       file:
-        path: /Users/{{ user_name }}/{{ item }}
+        path: /Users/{{ executor_user }}/{{ item }}
         state: directory
-        owner: "{{ user_name }}"
-        group: "{{ user_name }}"
+        owner: "{{ executor_user }}"
+        group: "{{ executor_user }}"
         mode: 'u=rwx,g=,o='
       loop:
         - .ssh
-        - .temp
         - bin
         - builds
         - caches
         - go
         - go/bin
-      notify: clean-executor-temp-dir
 
     - name: Create bash profile
       template:
         src: .bash_profile
-        dest: /Users/{{ user_name }}/.bash_profile
-        owner: "{{ user_name }}"
-        group: "{{ user_name }}"
-        mode: 'u=rw,g=,o='
+        dest: /Users/{{ executor_user }}/.bash_profile
+        owner: "{{ executor_user }}"
+        group: "{{ executor_user }}"
+        mode: 'u=r,g=,o='
 
-    - name: Copy prepare-executor script
+    - name: Copy scripts
       template:
-        src: prepare-executor.sh
-        dest: /Users/{{ user_name }}/bin
-        owner: "{{ user_name }}"
-        group: "{{ user_name }}"
-        mode: 'u=rwx,g=,o='
-
-    - name: Copy certificates
-      copy:
-        src: "{{ item.file }}"
-        dest: /Users/{{ user_name }}/.temp/{{ item.file }}
-        owner: "{{ user_name }}"
-        group: "{{ user_name }}"
-        mode: 'u=rw,g=,o='
-      loop: "{{ keychain_certificates }}"
-      loop_control:
-        label: "{{ item.file }}"
-
-    - name: Copy user playbook
-      template:
-        src: "{{ item }}"
-        dest: /Users/{{ user_name }}/.temp
-        owner: "{{ user_name }}"
-        group: "{{ user_name }}"
-        mode: 'u=rw,g=,o='
+        src: "{{ item }}.sh"
+        dest: /Users/{{ executor_user }}/bin/{{ item }}.sh
+        owner: "{{ executor_user }}"
+        group: "{{ executor_user }}"
+        mode: 'u=rx,g=,o='
       loop:
-        - user-playbook.yaml
-        - user-inventory.yaml
-        - ansible.cfg
+        - get-golang-packages
 
-    - name: Copy user playbook script
-      template:
-        src: run-user-playbook.sh
-        dest: /Users/{{ user_name }}/.temp
-        owner: "{{ user_name }}"
-        group: "{{ user_name }}"
-        mode: 'u=rwx,g=,o='
-
-    - name: Run user playbook
+    - name: Install per-user golang packages
       command:
         argv:
           - login
           - -f
-          - "{{ user_name }}"
-          - /Users/{{ user_name }}/.temp/run-user-playbook.sh
-      register: run_user_playbook
+          - "{{ executor_user }}"
+          - /Users/{{ executor_user }}/bin/get-golang-packages.sh
+      register: run_user_golang_packages
 
-    - name: Display user playbook log
+    - name: Display per-user golang log
       debug:
-        msg: "{{ run_user_playbook.stdout }}"
-      when: run_user_playbook.stdout != ""
+        msg: "{{ run_user_golang_packages.stdout }}"
+      when: run_user_golang_packages.stdout != ""
 
-    - name: Display user playbook error log
+    - name: Display per-user golang error log
       debug:
-        msg: "{{ run_user_playbook.stderr }}"
-      when: run_user_playbook.stdout == ""
-
-    # - name: Authorize SSH public key
-    #   ansible.posix.authorized_key:
-    #     user: gitlab-runner
-    #     key: "{{ lookup('file', 'hosts/' + inventory_hostname + '/runner-ssh-key.pub') }}"
-    #     manage_dir: false
-
-    # - name: Create executor SSH key
-    #   community.crypto.openssh_keypair:
-    #     path: /Users/gitlab-runner/.ssh/gitlab-executor
-    #     owner: gitlab-runner
-    #     group: staff
+        msg: "{{ run_user_golang_packages.stderr }}"
+      when: run_user_golang_packages.stderr != ""

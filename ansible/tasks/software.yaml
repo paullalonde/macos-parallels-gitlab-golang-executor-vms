@@ -18,7 +18,6 @@
     update_homebrew: "{{ update_homebrew }}"
     upgrade_all: "{{ update_homebrew }}"
   loop:
-    - ansible
     - coreutils
     - go@{{ golang_version }}
     - mitchellh/gon/gon # Need fixed version
