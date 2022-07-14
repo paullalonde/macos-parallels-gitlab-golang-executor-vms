@@ -24,6 +24,14 @@
               - "{{ keychain_password | trim }}"
               - executor
 
+        - name: Set keychain settings
+          command:
+            argv:
+              - security
+              - set-keychain-settings
+              - -u
+              - executor
+
         - name: Import certificates
           command:
             argv:
