@@ -47,7 +47,9 @@ pushd "${BASE_DIR}" >/dev/null
 rm -rf vms
 
 TEMP_DIR=.temp
-mkdir -p "${TEMP_DIR}"
+OUTPUT_DIR=output
+mkdir -p "${TEMP_DIR}" "${OUTPUT_DIR}"
+rm -rf "${TEMP_DIR}"/* "${OUTPUT_DIR}"/*
 
 VAULT_PASSWORD_FILE="${TEMP_DIR}/.ansible-vault-pw"
 trap "{ rm -f ${VAULT_PASSWORD_FILE}; }" EXIT

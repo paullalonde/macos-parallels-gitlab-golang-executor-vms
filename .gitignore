@@ -1,4 +1,5 @@
 .temp/
+output/
 vms/
 .env
 .DS_Store

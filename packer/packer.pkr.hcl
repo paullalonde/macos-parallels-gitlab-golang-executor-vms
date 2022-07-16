@@ -26,13 +26,18 @@ variable "ssh_password" {
 }
 
 locals {
-  ssh_username = "packer"
+  ssh_username  = "packer"
+  vms_dir       = "vms"
+  output_dir    = "output"
+  vm_name       = "ticksmith-${var.os_name}-executor"
+  tgz_path      = "${local.output_dir}/${local.vm_name}.tgz"
+  checksum_path = "${local.tgz_path}.sha256"
 }
 
 source "parallels-pvm" "main" {
-  vm_name              = "ticksmith-${var.os_name}-executor"
+  vm_name              = local.vm_name
   source_path          = var.source_vm
-  output_directory     = "vms"
+  output_directory     = local.vms_dir
   parallels_tools_mode = "disable"
   ssh_username         = local.ssh_username
   ssh_password         = var.ssh_password
@@ -60,6 +65,28 @@ build {
 
     ansible_env_vars = [
       "ANSIBLE_CONFIG=./ansible/ansible.cfg"
+    ]
+  }
+
+  post-processor "shell-local" {
+    inline = [
+      "set -eu",
+      "mkdir -p output",
+      "echo 'Creating tgz archive of VM ...'",
+      "tar -czf output/${local.vm_name}.tgz -C ${local.vms_dir} ${local.vm_name}.pvm",
+      "echo 'Computing checksum' ...",
+      "pushd output >/dev/null",
+      "sha256sum ${local.vm_name}.tgz >${local.vm_name}.tgz.sha256",
+      "touch -r ${local.vm_name}.tgz ${local.vm_name}.tgz.sha256",
+      "popd >/dev/null",
+    ]
+  }
+
+  # The tgz and its checksum are now the artifacts.
+  post-processor "artifice" {
+    files = [
+      local.tgz_path,
+      local.checksum_path,
     ]
   }
 }
