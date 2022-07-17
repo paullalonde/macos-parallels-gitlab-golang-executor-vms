@@ -26,18 +26,14 @@ variable "ssh_password" {
 }
 
 locals {
-  ssh_username  = "packer"
-  vms_dir       = "vms"
-  output_dir    = "output"
-  vm_name       = "ticksmith-${var.os_name}-executor"
-  tgz_path      = "${local.output_dir}/${local.vm_name}.tgz"
-  checksum_path = "${local.tgz_path}.sha256"
+  ssh_username = "packer"
+  vm_name      = "ticksmith-${var.os_name}-executor"
 }
 
 source "parallels-pvm" "main" {
   vm_name              = local.vm_name
   source_path          = var.source_vm
-  output_directory     = local.vms_dir
+  output_directory     = "vms"
   parallels_tools_mode = "disable"
   ssh_username         = local.ssh_username
   ssh_password         = var.ssh_password
@@ -72,12 +68,13 @@ build {
     inline = [
       "set -eu",
       "mkdir -p output",
+      "rm -rf output/*",
       "echo 'Creating tgz archive of VM ...'",
-      "tar -czf output/${local.vm_name}.tgz -C ${local.vms_dir} ${local.vm_name}.pvm",
-      "echo 'Computing checksum' ...",
+      "tar -czf output/${local.vm_name}.pvm.tgz -C vms ${local.vm_name}.pvm",
+      "echo 'Computing checksum ...'",
       "pushd output >/dev/null",
-      "sha256sum ${local.vm_name}.tgz >${local.vm_name}.tgz.sha256",
-      "touch -r ${local.vm_name}.tgz ${local.vm_name}.tgz.sha256",
+      "sha256sum ${local.vm_name}.pvm.tgz >${local.vm_name}.pvm.tgz.sha256",
+      "touch -r ${local.vm_name}.pvm.tgz ${local.vm_name}.pvm.tgz.sha256",
       "popd >/dev/null",
     ]
   }
@@ -85,8 +82,8 @@ build {
   # The tgz and its checksum are now the artifacts.
   post-processor "artifice" {
     files = [
-      local.tgz_path,
-      local.checksum_path,
+      "output/${local.vm_name}.tgz",
+      "output/${local.vm_name}.tgz.sha256",
     ]
   }
 }
