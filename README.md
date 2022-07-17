@@ -1,9 +1,30 @@
-# Ticksmith macOS Gitlab Executor
+# MacOS Parallels Gitlab Golang Executor VMs
 
-Creates a Parallels Desktop virtual machine containing a Gitlab executor tailored for Ticksmith's needs.
+Creates Parallels Desktop virtual machines containing a Gitlab CI
+[executor](https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-executors)
+capable of building golang projects on macOS.
 It starts with a *base* VM (see below), and performs the following actions:
 
-- ...
+- Installs golang 1.16 and related tools.
+- Creates a `gitlab-executor` user with a known password.
+  The user is not privileged (i.e. it's not an Adminstrator).
+  This is the user under which Gitlab CI jobs will run.
+- Installs some golang packages in the context of the `gitlab-executor` user.
+
+This executor cannot run Gitlab jobs directly;
+it needs to be hosted by a [Gitlab runner](https://docs.gitlab.com/runner/configuration/) first.
+
+#### Why?
+
+Admitedely, this is an odd executor VM.
+Although some CI offerings support macOS VMs, these are typically geared toward usual macOS/iOS development.
+My needs are a bit different.
+I write quite a few golang-based utilities.
+For the macOS versions of these utilities, I like to codesign them in order to avoid having to work around Gatekeeper.
+I also give them a proper installer.
+So I need a build enviroment that has both macOS build tools (Xcode etc) and golang.
+I don't use Xcode to manage the build process, though.
+Golang has its own suite of tools.
 
 #### Base VM
 
@@ -48,6 +69,10 @@ The base VM must have the following characteristics:
    - `catalina`
    - `bigsur`
    - `monterey`
-1. Packer will create the new VM as a copy of the base VM.
-1. Packer will then run the Ansible playbook, which in turn installs Homebrew and Xcode.
-1. Packer then saves the VM under the `vms` directory.
+1. Packer will perform the following steps:
+   1. Create the new VM as a copy of the base VM.
+   1. Run the Ansible playbook, which in turn installs Homebrew and Xcode.
+   1. Save the VM under the `vms` directory.
+   1. Tar & gzip the VM, producing a `.tgz` file.
+   1. Compute the tgz file's SHA256 checksum and save it to a file.
+   1. Both files (the tgz and the checksum) are placed in the `output` diretory.
