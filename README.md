@@ -26,6 +26,14 @@ So I need a build enviroment that has both macOS build tools (Xcode etc) and gol
 I don't use Xcode to manage the build process, though.
 Golang has its own suite of tools.
 
+## Requirements
+
+- Packer 1.8
+- Parallels Desktop 17 (Pro or Business edition)
+- Parallels Virtualization SDK 17.1.4
+- Ansible
+- A base VM
+
 #### Base VM
 
 The base VM must have the following characteristics:
@@ -38,14 +46,6 @@ The base VM must have the following characteristics:
 - Xcode is installed.
 
 [This repository](https://github.com/paullalonde/macos-parallels-build-vms) can generate a suitable base VM.
-
-## Requirements
-
-- Packer 1.8
-- Parallels Desktop 17
-- Parallels Virtualization SDK 17.1.4
-- Ansible
-- A base VM
 
 ## Setup
 
@@ -99,3 +99,9 @@ The base VM must have the following characteristics:
 1. The final outputs will be:
    - `output/macos-${var.os_name}-golang-executor.pvm.tgz`, the tar'd and gzip'd VM.
    - `output/macos-${var.os_name}-golang-executor.pvm.tgz.sha256`, the checksum.
+
+## Related Repositories
+
+- [Bootable ISO images for macOS](https://github.com/paullalonde/macos-bootable-iso-images).
+- [Base VMs for macOS](https://github.com/paullalonde/macos-parallels-base-vms).
+- [Build VMs for macOS](https://github.com/paullalonde/macos-parallels-build-vms).
