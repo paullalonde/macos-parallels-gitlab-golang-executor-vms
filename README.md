@@ -2,7 +2,7 @@
 
 Creates Parallels Desktop virtual machines containing a Gitlab CI
 [executor](https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-executors)
-capable of building golang projects on macOS.
+capable of building [golang](https://go.dev) projects on macOS.
 It starts with a *base* VM (see below), and performs the following actions:
 
 - Installs golang 1.16 and related tools.
@@ -16,8 +16,8 @@ it needs to be hosted by a [Gitlab runner](https://docs.gitlab.com/runner/config
 
 #### Why?
 
-Admitedely, this is an odd executor VM.
-Although some CI offerings support macOS VMs, these are typically geared toward usual macOS/iOS development.
+Admittedly, this is an odd executor VM.
+Although some CI offerings support macOS VMs, these are geared toward typical macOS/iOS development.
 My needs are a bit different.
 I write quite a few golang-based utilities.
 For the macOS versions of these utilities, I like to codesign them in order to avoid having to work around Gatekeeper.
@@ -44,26 +44,46 @@ The base VM must have the following characteristics:
 - Packer 1.8
 - Parallels Desktop 17
 - Parallels Virtualization SDK 17.1.4
+- Ansible
 - A base VM
-- jq
 
 ## Setup
 
+1. Decide on an Ansible Vault password.
+   It will be used to encrypt other secrets in Ansible files that get committed to source control.
+
 1. Create a Packer variables file for the version of macOS you are interested in, at `packer/conf/<os>.pkrvars.hcl`.
-   Add the following contents:
+   Add the following variables:
+   - `base_vm_checksum` The SHA256 checksum of the base VM.
+   - `base_vm_name` The name of the base VM, without any extension.
+     Obviously, the base VM has to actually run the correct version of macOS.
+   - `base_vm_url` The base URL for downloading the base VM.
+   - `ssh_password` The password of the `packer` account in the VM.
+
+1. Decide on the password for the `gitlab-executor` account.
+
+1. Encrypt the `gitlab-executor` account's password with the vault password:
+   ```bash
+   ansible-vault encrypt_string --ask-vault-password
    ```
-   source_vm    = "<REPLACE-ME>"
-   ssh_password = "<REPLACE-ME>"
-   ```
-   Replace the `source_vm`'s value with the path to the base VM.
-   Obviously, the base VM has to actually run the correct version of macOS.
-   Replace the `ssh_password`'s value with the password of the `packer` account in the VM.
+   You will be prompted for the vault password (twice!), then prompted to enter the secret to encrypt.
+   The encrypted password will be output to the terminal.
+
+1. Edit the Ansible group variables file for the version of macOS, i.e. `ansible/conf/${os_name}.yaml`.
+   Replace the value of the `executor_password` property with the encrypted password from the previous step.
 
 ## Procedure
 
+1. Make a `VAULT_PASSWORD` environment variable available to the following steps.
+   One easy way of doing so is to create a `.env` file containing a `VAULT_PASSWORD` variable for the password:
+   ```bash
+   export VAULT_PASSWORD=...
+   ```
+   Obviously, the variable's value is the Ansible Vault password.
+
 1. Run the script:
    ```bash
-   ./bin/provision.sh --os <name>
+   ./make-executor-vm.sh --os <name>
    ```
    where *name* is one of:
    - `catalina`
@@ -71,8 +91,11 @@ The base VM must have the following characteristics:
    - `monterey`
 1. Packer will perform the following steps:
    1. Create the new VM as a copy of the base VM.
-   1. Run the Ansible playbook, which in turn installs Homebrew and Xcode.
-   1. Save the VM under the `vms` directory.
+   1. Run the Ansible playbook, which in turn creates the `gitlab-executor` account and
+      installs golang and related tools.
+   1. Save the VM.
    1. Tar & gzip the VM, producing a `.tgz` file.
-   1. Compute the tgz file's SHA256 checksum and save it to a file.
-   1. Both files (the tgz and the checksum) are placed in the `output` diretory.
+   1. Compute the tgz file's checksum and save it to a file.
+1. The final outputs will be:
+   - `output/macos-${var.os_name}-golang-executor.pvm.tgz`, the tar'd and gzip'd VM.
+   - `output/macos-${var.os_name}-golang-executor.pvm.tgz.sha256`, the checksum.

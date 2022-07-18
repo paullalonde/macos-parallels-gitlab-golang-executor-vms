@@ -1,12 +1,11 @@
 #!/bin/bash
 
-set -eu
+set -eux
 
 SELF_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BASE_DIR="${SELF_DIR}/.."
 
 function usage() {
-  echo "usage: provision.sh <options>"                                 1>&2
+  echo "usage: make-executor-vm.sh <options>"                          1>&2
   echo "options:"                                                      1>&2
   echo "  --os <name>  Required. The name of macOS to make a VM for."  1>&2
   echo "               On of: catalina, bigsur, monterey."             1>&2
@@ -42,9 +41,9 @@ case "${OS}" in
   exit 21
 esac
 
-pushd "${BASE_DIR}" >/dev/null
+pushd "${SELF_DIR}" >/dev/null
 
-rm -rf vms
+rm -rf build input output
 
 TEMP_DIR=.temp
 mkdir -p "${TEMP_DIR}"
@@ -75,7 +74,17 @@ fi
 
 packer fmt -check -diff "${PACKER_FILE}"
 packer init "${PACKER_FILE}"
+
 packer build \
+  -only 'download.*' \
+  -timestamp-ui \
+  -var "os_name=${OS}" \
+  -var-file="${CONF_FILE}" \
+  "${PACKER_FILE}"
+
+packer build \
+  -only 'main.*' \
+  -timestamp-ui \
   -var "os_name=${OS}" \
   -var-file="${CONF_FILE}" \
   "${PACKER_FILE}"

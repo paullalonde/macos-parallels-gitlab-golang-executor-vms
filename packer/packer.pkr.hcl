@@ -9,13 +9,23 @@ packer {
   }
 }
 
-variable "os_name" {
-  description = "The name of version of macOS."
+variable "base_vm_checksum" {
+  description = "The SHA256 checksum of the base VM."
   type        = string
 }
 
-variable "source_vm" {
-  description = "The path to the source VM."
+variable "base_vm_name" {
+  description = "The name of the base VM."
+  type        = string
+}
+
+variable "base_vm_url" {
+  description = "The base URL from which to download the base VM."
+  type        = string
+}
+
+variable "os_name" {
+  description = "The name of version of macOS."
   type        = string
 }
 
@@ -27,13 +37,57 @@ variable "ssh_password" {
 
 locals {
   ssh_username = "packer"
-  vm_name      = "ticksmith-${var.os_name}-executor"
+
+  vm_name     = "macos-${var.os_name}-golang-executor"
+  pvm_name    = "${local.vm_name}.pvm"
+  tgz_name    = "${local.pvm_name}.tgz"
+  sha256_name = "${local.tgz_name}.sha256"
+
+  base_pvm_name = "${var.base_vm_name}.pvm"
+  base_tgz_name = "${local.base_pvm_name}.tgz"
 }
+
+# -------------------------------------------------------
+# Download phase.
+
+source "file" "bogus" {
+  target  = "/dev/null"
+  content = "null"
+}
+
+build {
+  name = "download"
+
+  # A fake source whose only purpose is to allow us to call a provisioner.
+  sources = [
+    "source.file.bogus",
+  ]
+
+  post-processor "shell-local" {
+    script = "scripts/download-base-vm.sh"
+
+    env = {
+      BASE_VM_URL = var.base_vm_url,
+      PVM_NAME    = local.base_pvm_name,
+      SHA256      = var.base_vm_checksum,
+      TGZ_NAME    = local.base_tgz_name,
+    }
+  }
+
+  post-processor "artifice" {
+    files = [
+      "input/${local.base_pvm_name}",
+    ]
+  }
+}
+
+# -------------------------------------------------------
+# VM construction phase.
 
 source "parallels-pvm" "main" {
   vm_name              = local.vm_name
-  source_path          = var.source_vm
-  output_directory     = "vms"
+  source_path          = "input/${local.base_pvm_name}"
+  output_directory     = "build"
   parallels_tools_mode = "disable"
   ssh_username         = local.ssh_username
   ssh_password         = var.ssh_password
@@ -44,6 +98,8 @@ source "parallels-pvm" "main" {
 }
 
 build {
+  name = "main"
+
   sources = [
     "source.parallels-pvm.main",
   ]
@@ -64,26 +120,35 @@ build {
     ]
   }
 
+  # The VM is built, so we don't need the inputs anymore.
   post-processor "shell-local" {
     inline = [
-      "set -eu",
-      "mkdir -p output",
-      "rm -rf output/*",
-      "echo 'Creating tgz archive of VM ...'",
-      "tar -czf output/${local.vm_name}.pvm.tgz -C vms ${local.vm_name}.pvm",
-      "echo 'Computing checksum ...'",
-      "pushd output >/dev/null",
-      "sha256sum ${local.vm_name}.pvm.tgz >${local.vm_name}.pvm.tgz.sha256",
-      "touch -r ${local.vm_name}.pvm.tgz ${local.vm_name}.pvm.tgz.sha256",
-      "popd >/dev/null",
+      "rm -rf input/*"
     ]
   }
 
-  # The tgz and its checksum are now the artifacts.
+  # We don't use the 'compress' post-processor, because its generated tgz isn't satisfactory.
+  post-processor "shell-local" {
+    script = "scripts/package-vm.sh"
+
+    env = {
+      PVM_NAME    = local.pvm_name,
+      SHA256_NAME = local.sha256_name,
+      TGZ_NAME    = local.tgz_name,
+    }
+  }
+
   post-processor "artifice" {
     files = [
-      "output/${local.vm_name}.tgz",
-      "output/${local.vm_name}.tgz.sha256",
+      "output/${local.tgz_name}",
+      "output/${local.sha256_name}",
+    ]
+  }
+
+  # The VM is packaged as a tgz under ./output, so we don't need the built VM anymore.
+  post-processor "shell-local" {
+    inline = [
+      "rm -rf build/${local.pvm_name}"
     ]
   }
 }

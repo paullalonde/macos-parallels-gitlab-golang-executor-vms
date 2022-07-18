@@ -1,6 +1,6 @@
 ---
 
-- name: Provision Ticksmith Gitlab Executor VM
+- name: Provision Gitlab Executor VM
   hosts: default
   tasks:
     - name: Disable sleep

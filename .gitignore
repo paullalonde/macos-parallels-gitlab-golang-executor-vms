@@ -1,6 +1,7 @@
 .temp/
-output/
-vms/
+/build/
+/input/
+/output/
 .env
 .DS_Store
 /notes.txt
