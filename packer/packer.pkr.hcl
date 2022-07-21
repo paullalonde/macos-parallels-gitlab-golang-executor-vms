@@ -120,6 +120,10 @@ build {
     ]
   }
 
+  provisioner "breakpoint" {
+    disable = true
+  }
+
   # The VM is built, so we don't need the inputs anymore.
   post-processor "shell-local" {
     inline = [

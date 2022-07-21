@@ -30,6 +30,7 @@
         - bin
         - builds
         - caches
+        - certs
         - go
         - go/bin
 
@@ -40,32 +41,3 @@
         owner: "{{ executor_user }}"
         group: "{{ executor_user }}"
         mode: 'u=r,g=,o='
-
-    - name: Copy scripts
-      template:
-        src: "{{ item }}.sh"
-        dest: /Users/{{ executor_user }}/bin/{{ item }}.sh
-        owner: "{{ executor_user }}"
-        group: "{{ executor_user }}"
-        mode: 'u=rx,g=,o='
-      loop:
-        - get-golang-packages
-
-    - name: Install per-user golang packages
-      command:
-        argv:
-          - login
-          - -f
-          - "{{ executor_user }}"
-          - /Users/{{ executor_user }}/bin/get-golang-packages.sh
-      register: run_user_golang_packages
-
-    - name: Display per-user golang log
-      debug:
-        msg: "{{ run_user_golang_packages.stdout }}"
-      when: run_user_golang_packages.stdout != ""
-
-    - name: Display per-user golang error log
-      debug:
-        msg: "{{ run_user_golang_packages.stderr }}"
-      when: run_user_golang_packages.stderr != ""

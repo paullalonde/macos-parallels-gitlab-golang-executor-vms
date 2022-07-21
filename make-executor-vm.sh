@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eux
+set -eu
 
 SELF_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -43,7 +43,7 @@ esac
 
 pushd "${SELF_DIR}" >/dev/null
 
-rm -rf build input output
+rm -rf build output input
 
 TEMP_DIR=.temp
 mkdir -p "${TEMP_DIR}"

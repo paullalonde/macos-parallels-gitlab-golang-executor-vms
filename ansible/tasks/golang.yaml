@@ -1,0 +1,64 @@
+---
+
+- name: Install golang
+  community.general.homebrew:
+    name: go@{{ golang_version }}
+    update_homebrew: "{{ update_homebrew }}"
+    upgrade_all: "{{ update_homebrew }}"
+
+- name: Create Go symlinks
+  file:
+    src: /usr/local/opt/go@{{ golang_version }}/bin/{{ item }}
+    dest: /usr/local/bin/{{ item }}
+    state: link
+  loop:
+    - go
+    - gofmt
+
+- name: Download golangci-lint installer
+  get_url:
+    url: https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh
+    dest: /tmp/install-golangci-lint.sh
+    mode: 'u=rwx,g=rx,o=rx'
+  notify: clean-golangci-lint-install
+
+- name: Run golangci-lint installer
+  command: /tmp/install-golangci-lint.sh -b /usr/local/bin v{{ golangci_lint_version }}
+
+- name: Set per-user golang package variables
+  set_fact:
+    per_user_golang_package_script: /Users/{{ executor_user }}/bin/get-golang-packages.sh
+    per_user_golang_package_sentinel: /Users/{{ executor_user }}/.get-golang-packages-success
+
+- name: Copy per-user golang package installation script
+  become: true
+  template:
+    src: get-golang-packages.sh
+    dest: "{{ per_user_golang_package_script }}"
+    owner: "{{ executor_user }}"
+    group: "{{ executor_user }}"
+    mode: 'u=rx,g=,o='
+
+# 'login' doesn't reliably propagate status codes from the command it invokes, so we work around this by
+# having the install script create a sentinel file when it succeeds.
+- name: Install per-user golang packages
+  become: true
+  command:
+    argv:
+      - login
+      - -f
+      - "{{ executor_user }}"
+      - "{{ per_user_golang_package_script }}"
+  register: install_golang_packages
+  notify: clean-user-golang-files
+
+- name: Check if golang package installation succeeded
+  become: true
+  stat:
+    path: "{{ per_user_golang_package_sentinel }}"
+  register: golang_sentinel_file
+
+- name: Fail the play if golang package installation failed.
+  fail:
+    msg: "{{ install_golang_packages.stderr }}"
+  when: not golang_sentinel_file.stat.exists

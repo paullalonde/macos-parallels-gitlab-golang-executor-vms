@@ -6,9 +6,10 @@ capable of building [golang](https://go.dev) projects on macOS.
 It starts with a *base* VM (see below), and performs the following actions:
 
 - Installs golang 1.16 and related tools.
-- Creates a `gitlab-executor` user with a known password.
+- Creates a `gitlab-executor` account with a known password.
   The user is not privileged (i.e. it's not an Adminstrator).
   This is the user under which Gitlab CI jobs will run.
+- Creates a custom keychain for the `gitlab-executor` account.
 - Installs some golang packages in the context of the `gitlab-executor` user.
 
 This executor cannot run Gitlab jobs directly;
@@ -49,37 +50,69 @@ The base VM must have the following characteristics:
 
 ## Setup
 
-1. Decide on an Ansible Vault password.
-   It will be used to encrypt other secrets in Ansible files that get committed to source control.
+#### General
 
 1. Create a Packer variables file for the version of macOS you are interested in, at `packer/conf/<os>.pkrvars.hcl`.
+   **DO NOT COMMIT THIS FILE TO SOURCE CONTROL**.
    Add the following variables:
-   - `base_vm_checksum` The SHA256 checksum of the base VM.
-   - `base_vm_name` The name of the base VM, without any extension.
-     Obviously, the base VM has to actually run the correct version of macOS.
-   - `base_vm_url` The base URL for downloading the base VM.
-   - `ssh_password` The password of the `packer` account in the VM.
+  - `base_vm_checksum` The SHA256 checksum of the base VM.
+  - `base_vm_name` The name of the base VM, without any extension.
+    Obviously, the base VM has to actually run the correct version of macOS.
+  - `base_vm_url` The base URL for downloading the base VM.
+  - `ssh_password` The password of the packer account in the VM.
 
-1. Decide on the password for the `gitlab-executor` account.
+#### Ansible Vault password
 
-1. Encrypt the `gitlab-executor` account's password with the vault password:
-   ```bash
-   ansible-vault encrypt_string --ask-vault-password
-   ```
-   You will be prompted for the vault password (twice!), then prompted to enter the secret to encrypt.
-   The encrypted password will be output to the terminal.
+The [Ansible Vault](https://docs.ansible.com/ansible/latest/user_guide/vault.html) password
+is used to encrypt other secrets in Ansible files that get committed to source control.
 
-1. Edit the Ansible group variables file for the version of macOS, i.e. `ansible/conf/${os_name}.yaml`.
-   Replace the value of the `executor_password` property with the encrypted password from the previous step.
-
-## Procedure
-
-1. Make a `VAULT_PASSWORD` environment variable available to the following steps.
-   One easy way of doing so is to create a `.env` file containing a `VAULT_PASSWORD` variable for the password:
+1. Decide on an Ansible Vault password.
+1. Create a file containing the password, to be read later by Ansible Vault.
+   We will call this file `vaultpw` in the examples below.
+   **DO NOT COMMIT THIS FILE TO SOURCE CONTROL**.
+1. Create a `.env` file containing the password, to be read later by the script that builds the VM.
+   **DO NOT COMMIT THIS FILE TO SOURCE CONTROL**.
    ```bash
    export VAULT_PASSWORD=...
    ```
-   Obviously, the variable's value is the Ansible Vault password.
+
+#### Executor password
+
+The `gitlab-executor` account, under which Gitlab jobs will run, needs a password.
+
+1. Decide on the password for the `gitlab-executor` account.
+1. Encrypt the `gitlab-executor` account's password with the vault password:
+   ```bash
+   ansible-vault encrypt_string --vault-password-file vaultpw >cipher.txt
+   ```
+   Paste the password into the terminal, then type Ctrl-D.
+   The encrypted password will be written to `cipher.txt`.
+1. Edit the Ansible group variables file for the version of macOS, i.e. `ansible/conf/${os_name}.yaml`.
+   Replace the value of the `executor_password` property with the contents of the `cipher.txt` file.
+
+#### Executor keychain password
+
+The `gitlab-executor` account needs a password for its custom keychain.
+
+1. Decide on the password for the `gitlab-executor` account's keychain.
+1. Encrypt the `gitlab-executor` account's keychain password with the vault password:
+   ```bash
+   ansible-vault encrypt_string --vault-password-file vaultpw >cipher.txt
+   ```
+   Paste the password into the terminal, then type Ctrl-D.
+   The encrypted password will be written to `cipher.txt`.
+1. Edit the Ansible group variables file for the version of macOS, eg `ansible/conf/${os_name}.yaml`.
+   Replace the value of the `keychain_password` property with the contents of the `cipher.txt` file.
+
+#### Apple Developer Program (ADP) credentials
+
+TODO
+
+#### Apple certificates
+
+TODO
+
+## Procedure
 
 1. Run the script:
    ```bash
@@ -89,6 +122,7 @@ The base VM must have the following characteristics:
    - `catalina`
    - `bigsur`
    - `monterey`
+
 1. Packer will perform the following steps:
    1. Create the new VM as a copy of the base VM.
    1. Run the Ansible playbook, which in turn creates the `gitlab-executor` account and
@@ -96,6 +130,7 @@ The base VM must have the following characteristics:
    1. Save the VM.
    1. Tar & gzip the VM, producing a `.tgz` file.
    1. Compute the tgz file's checksum and save it to a file.
+
 1. The final outputs will be:
    - `output/macos-${var.os_name}-golang-executor.pvm.tgz`, the tar'd and gzip'd VM.
    - `output/macos-${var.os_name}-golang-executor.pvm.tgz.sha256`, the checksum.

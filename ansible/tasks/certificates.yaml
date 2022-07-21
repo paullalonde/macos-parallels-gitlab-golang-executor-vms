@@ -1,0 +1,59 @@
+---
+
+- name: Copy certificates
+  become: true
+  copy:
+    src: "{{ item.filename }}"
+    dest: /Users/{{ executor_user }}/certs/{{ item.filename }}
+    owner: "{{ executor_user }}"
+    group: "{{ executor_user }}"
+    mode: 'u=rw,g=,o='
+  loop: "{{ apple_certificates }}"
+  loop_control:
+    label: "{{ item.filename }}"
+
+- name: Extract certificates
+  become: true
+  command:
+    argv:
+      - openssl
+      - pkcs12
+      - -info
+      - -nodes
+      - -nokeys
+      - -in
+      - /Users/{{ executor_user }}/certs/{{ item.filename }}
+      - -passin
+      - "pass:{{ item.password | trim }}"
+      - -out
+      - /Users/{{ executor_user }}/certs/{{ item.filename }}.pem
+  loop: "{{ apple_certificates }}"
+  loop_control:
+    label: "{{ item.filename }}.pem"
+  notify: clean-user-certificates
+
+- name: Extract raw certificate hashes
+  become: true
+  command:
+    argv:
+      - openssl
+      - "x509"
+      - -noout
+      - -fingerprint
+      - -sha1
+      - -inform
+      - pem
+      - -in
+      - /Users/{{ executor_user }}/certs/{{ item.filename }}.pem
+  loop: "{{ apple_certificates }}"
+  loop_control:
+    label: "{{ item.filename }}.pem"
+  register: certificate_hashes_raw
+
+- name: Extract certificate hashes
+  set_fact:
+    certificate_hashes: "{{ certificate_hashes|default([]) + [ certificate_hashes_raw.results[item_index].stdout | regex_search('SHA1 Fingerprint=([0-9a-fA-F:]+)', '\\1') | regex_findall('[0-9a-fA-F]{2}') | join('') ] }}"
+  loop: "{{ apple_certificates }}"
+  loop_control:
+    label: "{{ item.filename }}.pem"
+    index_var: item_index

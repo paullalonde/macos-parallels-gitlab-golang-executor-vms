@@ -1,0 +1,39 @@
+---
+
+- name: Set per-user keychain variables
+  set_fact:
+    per_user_keychain_script: /Users/{{ executor_user }}/bin/setup-keychain.sh
+    per_user_keychain_sentinel: /Users/{{ executor_user }}/.setup-keychain-success
+
+- name: Copy setup-keychain script
+  become: true
+  template:
+    src: setup-keychain.sh
+    dest: "{{ per_user_keychain_script }}"
+    owner: "{{ executor_user }}"
+    group: "{{ executor_user }}"
+    mode: 'u=rx,g=,o='
+  notify: clean-user-keychain-files
+
+# 'login' doesn't reliably propagate status codes from the command it invokes, so we work around this by
+# having the install script create a sentinel file when it succeeds.
+- name: Run setup-keychain script
+  become: true
+  command:
+    argv:
+      - login
+      - -f
+      - "{{ executor_user }}"
+      - "{{ per_user_keychain_script }}"
+  register: setup_keychain
+
+- name: Check if keychain setup succeeded
+  become: true
+  stat:
+    path: "{{ per_user_keychain_sentinel }}"
+  register: keychain_sentinel_file
+
+- name: Fail the play if keychain setup failed.
+  fail:
+    msg: "{{ setup_keychain.stderr }}"
+  when: not keychain_sentinel_file.stat.exists

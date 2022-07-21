@@ -6,11 +6,23 @@
     - name: Disable sleep
       import_tasks: tasks/no-sleep.yaml
 
+    - name: Setup executor user
+      import_tasks: tasks/user.yaml
+
     - name: Install software
       import_tasks: tasks/software.yaml
 
-    - name: Setup executor user
-      import_tasks: tasks/user.yaml
+    - name: Install certificates
+      import_tasks: tasks/certificates.yaml
+
+    - name: Copy job-variables script
+      import_tasks: tasks/jobvars.yaml
+
+    - name: Setup keychain
+      import_tasks: tasks/keychain.yaml
+
+    - name: Install golang
+      import_tasks: tasks/golang.yaml
 
   handlers:
     - name: Clean up golangci-lint installation script
@@ -18,3 +30,32 @@
         dest: /tmp/install-golangci-lint.sh
         state: absent
       listen: clean-golangci-lint-install
+
+    - name: Clean up certificates
+      become: true
+      file:
+        dest: /Users/{{ executor_user }}/certs/{{ item.filename }}.pem
+        state: absent
+      loop: "{{ apple_certificates }}"
+      loop_control:
+        label: "{{ item.filename }}.pem"
+      listen: clean-user-certificates
+
+    - name: Clean up per-user golang files
+      become: true
+      file:
+        dest: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ per_user_golang_package_sentinel }}"
+      listen: clean-user-golang-files
+
+    - name: Clean up per-user keychain files
+      become: true
+      file:
+        dest: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ per_user_keychain_script }}"
+        - "{{ per_user_keychain_sentinel }}"
+      listen: clean-user-keychain-files
