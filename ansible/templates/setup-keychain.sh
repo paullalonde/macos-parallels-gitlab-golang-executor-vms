@@ -11,15 +11,18 @@ trap "{ rm -rf ${TEMP_DIR}; }" EXIT
 echo "Creating keychain ..."
 security create-keychain -p "{{ keychain_password | trim }}" "{{ keychain_name }}"
 
-echo "Set keychain settings (no lock timeout) ..."
-security set-keychain-settings -u "{{ keychain_name }}"
+echo "Set keychain settings to defaults (no auto-lock timeout, and no lock on sleep) ..."
+security set-keychain-settings "{{ keychain_name }}"
 
 {% for item in apple_certificates %}
 echo "Importing certificate {{ item.filename }} ..."
 security import ~/certs/"{{ item.filename }}" \
-  -f pkcs12 \
+  -f pkcs12 -x \
   -k "{{ keychain_name }}" \
   -T /usr/bin/codesign \
+  -T /usr/bin/pkgbuild \
+  -T /usr/bin/productsign \
+  -T /usr/bin/productbuild \
   -T /usr/bin/security \
   -P "{{ item.password | trim }}" \
   >/dev/null
@@ -28,6 +31,7 @@ security import ~/certs/"{{ item.filename }}" \
 echo "Allowing Apple tools to access signing keys ..."
 security set-key-partition-list \
   -S "apple-tool:,apple:,codesign:" \
+  -s \
   -k "{{ keychain_password | trim }}" \
   "{{ keychain_name }}" \
   >/dev/null
