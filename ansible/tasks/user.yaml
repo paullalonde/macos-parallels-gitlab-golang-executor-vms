@@ -1,43 +1,45 @@
 ---
 
-- become: true
-  block:
-    - name: Gitlab executor group
-      group:
-        name: "{{ executor_user }}"
+- name: Gitlab executor group
+  become: true
+  group:
+    name: "{{ executor_user }}"
 
-    - name: Gitlab executor user
-      user:
-        name: "{{ executor_user }}"
-        password: "{{ executor_password | trim }}"
-        comment: GitLab Executor
-        groups:
-          - "{{ executor_user }}"
-          - _developer
-          - com.apple.access_ssh
-        hidden: true
-        shell: /bin/bash
+- name: Gitlab executor user
+  become: true
+  user:
+    name: "{{ executor_user }}"
+    password: "{{ executor_password | trim }}"
+    comment: GitLab Executor
+    groups:
+      - "{{ executor_user }}"
+      - _developer
+      - com.apple.access_ssh
+    hidden: true
+    shell: /bin/bash
 
-    - name: Gitlab executor directories
-      file:
-        path: /Users/{{ executor_user }}/{{ item }}
-        state: directory
-        owner: "{{ executor_user }}"
-        group: "{{ executor_user }}"
-        mode: 'u=rwx,g=,o='
-      loop:
-        - .ssh
-        - bin
-        - builds
-        - caches
-        - certs
-        - go
-        - go/bin
+- name: Gitlab executor directories
+  become: true
+  file:
+    path: /Users/{{ executor_user }}/{{ item }}
+    state: directory
+    owner: "{{ executor_user }}"
+    group: "{{ executor_user }}"
+    mode: 'u=rwx,g=,o='
+  loop:
+    - .ssh
+    - bin
+    - builds
+    - caches
+    - certs
+    - go
+    - go/bin
 
-    - name: Create bash profile
-      template:
-        src: .bash_profile
-        dest: /Users/{{ executor_user }}/.bash_profile
-        owner: "{{ executor_user }}"
-        group: "{{ executor_user }}"
-        mode: 'u=r,g=,o='
+- name: Create bash profile
+  become: true
+  template:
+    src: .bash_profile
+    dest: /Users/{{ executor_user }}/.bash_profile
+    owner: "{{ executor_user }}"
+    group: "{{ executor_user }}"
+    mode: 'u=r,g=,o='
