@@ -39,6 +39,13 @@
     group: "{{ executor_user }}"
     mode: 'u=rx,g=,o='
 
+- name: Retrieve expanded golang package installation script
+  become: true
+  fetch:
+    src: "{{ per_user_golang_package_script }}"
+    dest: ../build
+  when: fetch_files
+
 # 'login' doesn't reliably propagate status codes from the command it invokes, so we work around this by
 # having the install script create a sentinel file when it succeeds.
 - name: Install per-user golang packages

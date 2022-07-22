@@ -3,6 +3,9 @@
 - name: Provision Gitlab Executor VM
   hosts: default
   tasks:
+    - name: Determine runtime flags
+      import_tasks: tasks/flags.yaml
+
     - name: Disable sleep
       import_tasks: tasks/no-sleep.yaml
 

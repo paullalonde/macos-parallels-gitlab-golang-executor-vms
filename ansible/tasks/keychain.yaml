@@ -5,6 +5,19 @@
     per_user_keychain_script: /Users/{{ executor_user }}/bin/setup-keychain.sh
     per_user_keychain_sentinel: /Users/{{ executor_user }}/.setup-keychain-success
 
+- name: Read xcrun tool paths
+  command: xcrun --find {{ item }}
+  changed_when: false
+  loop: "{{ xcrun_tools }}"
+  register: xcrun_tool_paths_cmd
+
+- name: Set xcrun tool paths
+  set_fact:
+    xcrun_tool_paths: "{{ xcrun_tool_paths | default([]) + [item.stdout] }}"
+  loop: "{{ xcrun_tool_paths_cmd.results }}"
+  loop_control:
+    label: "{{ item.stdout }}"
+
 - name: Copy setup-keychain script
   become: true
   template:
@@ -14,6 +27,13 @@
     group: "{{ executor_user }}"
     mode: 'u=rx,g=,o='
   notify: clean-user-keychain-files
+
+- name: Retrieve expanded setup-keychain script
+  become: true
+  fetch:
+    src: "{{ per_user_keychain_script }}"
+    dest: ../build
+  when: fetch_files
 
 # 'login' doesn't reliably propagate status codes from the command it invokes, so we work around this by
 # having the install script create a sentinel file when it succeeds.
@@ -27,6 +47,14 @@
       - "{{ per_user_keychain_script }}"
   register: setup_keychain
 
+- name: Retrieve keychain
+  become: true
+  fetch:
+    src: "{{ keychain_path }}"
+    dest: ../build
+  when: fetch_files
+  ignore_errors: true
+
 - name: Check if keychain setup succeeded
   become: true
   stat:
@@ -37,10 +65,3 @@
   fail:
     msg: "{{ setup_keychain.stderr }}"
   when: not keychain_sentinel_file.stat.exists
-
-- name: Retrieve expanded setup-keychain script
-  become: true
-  fetch:
-    src: "{{ per_user_keychain_script }}"
-    dest: ../build
-  when: false

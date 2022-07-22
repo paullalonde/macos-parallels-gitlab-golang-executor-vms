@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eux
+set -eu
 
 export PATH="/usr/local/bin:/usr/local/sbin:/usr/local/go/bin:/usr/bin:/bin:/usr/sbin:/sbin:${HOME}/bin:${HOME}/go/bin"
 
@@ -8,23 +8,26 @@ TEMP_DIR="/Users/{{ executor_user }}/.setup-keychain-temp"
 mkdir -p "${TEMP_DIR}"
 trap "{ rm -rf ${TEMP_DIR}; }" EXIT
 
+KEYCHAIN="{{ keychain_path }}"
+KEYCHAIN_PASSWORD="{{ keychain_password | trim }}"
+
 echo "Creating keychain ..."
-security create-keychain -p "{{ keychain_password | trim }}" "{{ keychain_name }}"
+security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
+
+echo "Unlocking keychain ..."
+security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
 
 echo "Set keychain settings to defaults (no auto-lock timeout, and no lock on sleep) ..."
-security set-keychain-settings "{{ keychain_name }}"
-{% for item in apple_certificates %}
+security set-keychain-settings "${KEYCHAIN}"
 
-echo "Importing certificate {{ item.filename }} ..."
-security import ~/certs/"{{ item.filename }}" \
+echo "Importing certificate {{ cert.filename }} ..."
+security import ~/certs/"{{ cert.filename }}" \
   -f pkcs12 -x \
-  -k "{{ keychain_name }}" \
-  -T /usr/bin/codesign \
-  -T /usr/bin/pkgbuild \
-  -T /usr/bin/productbuild \
-  -T /usr/bin/productsign \
-  -T /usr/bin/security \
-  -P "{{ item.password | trim }}" \
+  -k "${KEYCHAIN}" \
+{% for path in xcrun_tool_paths %}
+  -T "{{ path | trim }}" \
+{% endfor %}
+  -P "{{ cert.password | trim }}" \
   >/dev/null
 {% endfor %}
 
@@ -32,30 +35,32 @@ echo "Allowing Apple tools to access signing keys ..."
 security set-key-partition-list \
   -S "apple-tool:,apple:,codesign:" \
   -s \
-  -k "{{ keychain_password | trim }}" \
-  "{{ keychain_name }}" \
+  -k "${KEYCHAIN_PASSWORD}" \
+  "${KEYCHAIN}" \
   >/dev/null
-
 {% for item in apple_developer_program_credentials %}
-echo "Importing altool credentials for {{ item.username }} ..."
-xcrun altool --store-password-in-keychain-item "{{ adp_keychain_service_altool }}" \
-  -u "{{ item.username }}" \
-  -p "{{ item.password | trim }}"  \
-  --keychain "{{ keychain_name }}"
 
+{# WARNING: altool has a tendency to FAIL SILENTLY #}
+echo "Importing altool credentials for {{ item.username }} ..."
+xcrun altool --store-password-in-keychain-item "{{ altool_keychain_item }} ({{ item.username }})" \
+{% if altool_supports_keychain_option %}
+  --keychain "${KEYCHAIN}" \
+{% endif %}
+  -u "{{ item.username }}" \
+  -p "{{ item.password | trim }}"
 {% if has_notarytool %}
-# TODO: Finish this
+
 echo "Importing notarytool credentials for {{ item.username }} ..."
-xcrun notarytool store-credentials "{{ adp_keychain_service_notarytool }}" \
+xcrun notarytool store-credentials "{{ notarytool_profile }} ({{ item.username }})" \
   --apple-id "{{ item.username }}" \
   --password "{{ item.password | trim }}"  \
   --team-id "{{ item.team_id }}" \
-  --keychain "{{ keychain_name }}"
+  --keychain "${KEYCHAIN}"
 {% endif %}
 {% endfor %}
 
-# Add keychain to search list
-security list-keychains -d user -s "{{ keychain_name }}"
+echo "Locking keychain ..."
+security lock-keychain "${KEYCHAIN}"
 
 # Signal to Ansible that we succeeded.
 touch "{{ per_user_keychain_sentinel }}"

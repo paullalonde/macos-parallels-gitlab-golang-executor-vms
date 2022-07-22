@@ -1,29 +1,5 @@
 ---
 
-- name: Do we have notarytool?
-  block:
-    - name: Get path to Xcode
-      command: xcode-select --print-path
-      register: xcode_path
-
-    - name: Read Xcode version 1 / 2
-      command:
-        argv:
-          - defaults
-          - read
-          - "{{ xcode_path.stdout | trim }}/../Info"
-          - CFBundleShortVersionString
-      register: xcode_version_cmd
-
-    - name: Read Xcode version 2 / 2
-      set_fact:
-        xcode_version: "{{ xcode_version_cmd.stdout | trim}}"
-
-    - name: If Xcode is earlier than 13, then we don't have notarytool
-      set_fact:
-        has_notarytool: false
-      when: xcode_version is version('13.0.0', '<')
-
 - name: Copy job-variables script
   become: true
   template:
@@ -38,4 +14,4 @@
   fetch:
     src: /Users/{{ executor_user }}/bin/setup-job-variables.sh
     dest: ../build
-  when: false
+  when: fetch_files

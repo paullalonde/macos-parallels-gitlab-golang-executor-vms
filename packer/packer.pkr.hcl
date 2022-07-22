@@ -121,7 +121,8 @@ build {
   }
 
   provisioner "breakpoint" {
-    disable = true
+    disable = false
+    note    = "FILES IN THE INPUT AND BUILD DIRECTORIES WILL BE DELETED AFTER THIS POINT."
   }
 
   # The VM is built, so we don't need the inputs anymore.

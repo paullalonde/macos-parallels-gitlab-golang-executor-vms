@@ -45,6 +45,7 @@
       - pem
       - -in
       - /Users/{{ executor_user }}/certs/{{ item.filename }}.pem
+  changed_when: false
   loop: "{{ apple_certificates }}"
   loop_control:
     label: "{{ item.filename }}.pem"
