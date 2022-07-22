@@ -38,4 +38,4 @@
   fetch:
     src: /Users/{{ executor_user }}/bin/setup-job-variables.sh
     dest: ../build
-  when: true
+  when: false

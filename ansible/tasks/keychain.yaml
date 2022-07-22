@@ -43,4 +43,4 @@
   fetch:
     src: "{{ per_user_keychain_script }}"
     dest: ../build
-  when: true
+  when: false
