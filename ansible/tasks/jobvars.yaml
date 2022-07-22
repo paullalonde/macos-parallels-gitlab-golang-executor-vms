@@ -32,3 +32,10 @@
     owner: "{{ executor_user }}"
     group: "{{ executor_user }}"
     mode: 'u=r,g=,o='
+
+- name: Retrieve expanded job-variables script
+  become: true
+  fetch:
+    src: /Users/{{ executor_user }}/bin/setup-job-variables.sh
+    dest: ../build
+  when: true

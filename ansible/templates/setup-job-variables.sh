@@ -7,12 +7,11 @@ export {{ item.job_variables.hash }}="{{ certificate_hashes[loop.index-1] }}"
 
 # Keychain items
 {% for item in apple_developer_program_credentials %}
-export {{ item.job_variables.generic.keychain_item }}="{{ adp_keychain_service }}"
-export {{ item.job_variables.generic.username }}="{{ item.username }}"
+export {{ item.job_variables.username }}="{{ item.username }}"
+export {{ item.job_variables.team_id }}="{{ item.team_id }}"
+export {{ item.job_variables.asc_provider }}="{{ item.asc_provider }}"
 export {{ item.job_variables.altool.keychain_item }}="{{ adp_keychain_service_altool }}"
-export {{ item.job_variables.altool.username }}="{{ item.username }}"
 {% if has_notarytool %}
 export {{ item.job_variables.notarytool.keychain_item }}="{{ adp_keychain_service_notarytool }}"
-export {{ item.job_variables.notarytool.username }}="{{ item.username }}"
 {% endif %}
 {% endfor %}

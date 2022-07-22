@@ -37,3 +37,10 @@
   fail:
     msg: "{{ setup_keychain.stderr }}"
   when: not keychain_sentinel_file.stat.exists
+
+- name: Retrieve expanded setup-keychain script
+  become: true
+  fetch:
+    src: "{{ per_user_keychain_script }}"
+    dest: ../build
+  when: true
