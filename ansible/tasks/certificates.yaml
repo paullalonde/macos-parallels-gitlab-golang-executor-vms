@@ -3,7 +3,7 @@
 - name: Copy certificates
   become: true
   copy:
-    src: "{{ item.filename }}"
+    src: "certificates/{{ item.filename }}"
     dest: /Users/{{ executor_user }}/certs/{{ item.filename }}
     owner: "{{ executor_user }}"
     group: "{{ executor_user }}"

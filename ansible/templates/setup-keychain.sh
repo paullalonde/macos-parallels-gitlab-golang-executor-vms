@@ -58,6 +58,10 @@ xcrun notarytool store-credentials "{{ notarytool_profile }} ({{ item.username }
   --keychain "${KEYCHAIN}"
 {% endif %}
 {% endfor %}
+{% if fetch_files %}
+
+security dump-keychain >${HOME}/dump-keychain.txt
+{% endif %}
 
 echo "Locking keychain ..."
 security lock-keychain "${KEYCHAIN}"

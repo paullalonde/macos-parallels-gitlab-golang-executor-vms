@@ -55,6 +55,14 @@
   when: fetch_files
   ignore_errors: true
 
+- name: Retrieve keychain dump
+  become: true
+  fetch:
+    src: /Users/{{ executor_user }}/dump-keychain.txt
+    dest: ../build
+  when: fetch_files
+  ignore_errors: true
+
 - name: Check if keychain setup succeeded
   become: true
   stat:

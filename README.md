@@ -9,7 +9,8 @@ It starts with a *base* VM (see below), and performs the following actions:
 - Creates a `gitlab-executor` account with a known password.
   The user is not privileged (i.e. it's not an Adminstrator).
   This is the user under which Gitlab CI jobs will run.
-- Creates a custom keychain for the `gitlab-executor` account.
+- Creates a custom keychain for the `gitlab-executor` account,
+  which is populated with Apple-specific secrets such as credentials and signing certificates.
 - Installs some golang packages in the context of the `gitlab-executor` user.
 
 This executor cannot run Gitlab jobs directly;
@@ -27,6 +28,22 @@ So I need a build enviroment that has both macOS build tools (Xcode etc) and gol
 I don't use Xcode to manage the build process, though.
 Golang has its own suite of tools.
 
+#### In-VM secrets
+
+The VM produced herein contains secrets within a custom keychain.
+The keychain is protected by a password that is shared between this Gitlab executor and the Gitlab runner that invokes it.
+The secrets fall into two categories:
+
+- Apple signing identities; these are used for code signing.
+  Recall that in keychain parlance, an identity is a certificate paired with its matching private key.
+- Apple Developer Program credentials; these are used for notarization.
+
+Obviously, having the keychain baked into the Gitlab executor VM means that a change to the secrets requires
+rebuilding the VM.
+So it's not very convenient.
+The tradeoff is that the secrets are less exposed to users of individual Gitlab repositories than if they were
+provided as normal Gitlab environment variables.
+
 ## Requirements
 
 - Packer 1.8
@@ -43,10 +60,22 @@ The base VM must have the following characteristics:
 - There's an administrator account called `packer` with a known password.
 - Remote Login (i.e. SSH) must be turned on, and enabled for the `packer` account.
 - The Command Line Developer Tools are installed.
-- Homebrew is installed.
-- Xcode is installed.
+- Homebrew, jq and Xcode are installed.
 
 [This repository](https://github.com/paullalonde/macos-parallels-build-vms) can generate a suitable base VM.
+
+#### Gitlab runner
+
+Some coordination is required between this Gitlab executor and the Gitlab runner that invokes it.
+
+The Gitlab runner's pre-clone script need to do the following:
+  - Unlock the custom keychain.
+  - Add the custom keychain to the keychain search list,
+    so its items can be easily found by tools such as `codesign`.
+
+The Gitlab runner's pre-build script need to do the following:
+  - Source the file at `~/bin/setup-job-variables.sh`;
+    this file defines a number of envionment variables for use by Gitlab jobs.
 
 ## Setup
 
@@ -104,13 +133,79 @@ The `gitlab-executor` account needs a password for its custom keychain.
 1. Edit the Ansible group variables file for the version of macOS, eg `ansible/conf/${os_name}.yaml`.
    Replace the value of the `keychain_password` property with the contents of the `cipher.txt` file.
 
-#### Apple Developer Program (ADP) credentials
-
-TODO
-
 #### Apple certificates
 
-TODO
+1. Delete all of the files under `ansible/files/certificates`.
+1. In the `ansible/group_vars/all.yaml` file, delete all array elements under the `apple_certificates` property.
+1. For each signing certificate you have:
+   1. Export the certificate from your local keychain. Use a secure password to protect it.
+      This will produce a PKCS#12 file with a `.p12` extension.
+   1. Place the `.p12` file under `ansible/files/certificates`.
+   1. Edit the `ansible/group_vars/all.yaml` file.
+      Add an array element under the `apple_certificates` property with the following contents.
+      - `filename` is the certificate file's name, with its `.p12` extension.
+      - `password` is the `.p12` file's password,
+        encrypted with `ansible-vault` similarly to the executor account's password.
+      - `job_variables` is a collection of key/value pairs, where each value is an environment variable name.
+        The variable will be made available to Gitlab jobs running in this executor.
+        - `hash` is the name of the environment variable that will hold the SHA1 hash of the certificate;
+          this is used by `codesign` *et al* to identify the certificate to use when signing.
+          For example, if the variable is defined like so:
+          ```yaml
+          hash: MY_CERT_HASH
+          ```
+          then a Gitlab job running in this executor can issue this call:
+          ```bash
+          codesign --sign "${MY_CERT_HASH}" ...
+          ```
+
+#### Apple Developer Program (ADP) credentials
+
+1. In the `ansible/group_vars/all.yaml` file, delete all array elements under the `apple_developer_program_credentials` property.
+1. For each credential you have:
+   1. Edit the `ansible/group_vars/all.yaml`.
+      Add an array element under the `apple_developer_program_credentials` property with the following contents.
+      - `username` is the name of the Apple Developer account.
+      - `password` is an app-specific password belonging to the Apple Developer account;
+        it needs to be encrypted with `ansible-vault` similarly to the executor account's password.
+      - `team_id` is an ADP Team ID of which the Apple Developer account is a member.
+      - `asc_provider` is an App Store Connect Provider of which the Apple Developer account is a member.
+      - `job_variables` is a collection of key/value pairs, where each value is an environment variable name.
+        The variable will be made available to Gitlab jobs running in this executor.
+        - `username` is the name of the environment variable that will hold the name of the Apple Developer account.
+        - `team_id` is the name of the environment variable that will hold the ADP Team ID.
+        - `asc_provider` is the name of the environment variable that will hold the App Store Connect Provider.
+        - `altool` is a collection of variables for use by `altool`.
+          - `keychain_item` is the name of the keychain item that will hold ADP credentials for use by `altool`.
+        - `notarytool` is a collection of variables for use by `notarytool`.
+          - `profile` is the name of the profile (aka keychain item) that will hold ADP credentials for use by `notarytool`.
+
+Here's an example.
+Given these ADP credentials:
+
+```yaml
+apple_developer_program_credentials:
+  - username: my-user@gmail.com
+    password: ...
+    team_id: ...
+    asc_provider: ...
+    job_variables:
+      username: MY_ADP_USERNAME
+      team_id: MY_ADP_TEAM_ID
+      asc_provider: MY_ASC_PROVIDER
+      altool:
+        keychain_item: MY_ALTOOL_ITEM
+      notarytool:
+        profile: MY_NOTARYTOOL_PROFILE
+```
+
+then a Gitlab job running in this executor can issue these calls:
+
+```bash
+xcrun altool --notarize-app ... -u "${MY_ADP_USERNAME}" -p "@keychain:${MY_ALTOOL_ITEM}" --asc-provider  "${MY_ASC_PROVIDER}"
+
+xcrun notarytool submit ... --keychain-profile "${MY_NOTARYTOOL_PROFILE}" --keychain "${KEYCHAIN}"
+```
 
 ## Procedure
 
