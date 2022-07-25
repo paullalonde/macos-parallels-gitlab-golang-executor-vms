@@ -68,6 +68,7 @@ if [[ -z "${VAULT_PASSWORD:-}" ]]; then
   exit 1
 fi
 
+# Note that Ansible locates the password file via a directive in ansible.cfg
 echo "${VAULT_PASSWORD}" >"${VAULT_PASSWORD_FILE}"
 
 PACKER_DIR=packer

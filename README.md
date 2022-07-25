@@ -23,7 +23,7 @@ Although some CI offerings support macOS VMs, these are geared toward typical ma
 My needs are a bit different.
 I write quite a few golang-based utilities.
 For the macOS versions of these utilities, I like to codesign them in order to avoid having to work around Gatekeeper.
-I also give them a proper installer.
+I also give them a proper installer, which I then notarize.
 So I need a build enviroment that has both macOS build tools (Xcode etc) and golang.
 I don't use Xcode to manage the build process, though.
 Golang has its own suite of tools.
