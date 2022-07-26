@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -eux
 
 export PATH="/usr/local/bin:/usr/local/sbin:/usr/local/go/bin:/usr/bin:/bin:/usr/sbin:/sbin:${HOME}/bin:${HOME}/go/bin"
 
@@ -35,14 +35,15 @@ security import ~/certs/"{{ item.filename }}" \
   -k "${KEYCHAIN}" \
   -P "{{ item.password | trim }}" \
   >/dev/null
+{% endfor %}
+
+echo "Setting key partition list ..."
 security set-key-partition-list \
   -S "apple-tool:,apple:,codesign:" \
   -s \
-  -l "{{ certificate_subjects[loop_index] }}" \
   -k "${KEYCHAIN_PASSWORD}" \
   "${KEYCHAIN}" \
   >/dev/null
-{% endfor %}
 {% for item in apple_developer_program_credentials %}
 
 {# WARNING: altool has a tendency to FAIL SILENTLY #}
