@@ -4,19 +4,23 @@
   set_fact:
     per_user_keychain_script: /Users/{{ executor_user }}/bin/setup-keychain.sh
     per_user_keychain_sentinel: /Users/{{ executor_user }}/.setup-keychain-success
+    per_user_keychain_dump: /Users/{{ executor_user }}/{{ keychain_name }}.txt
 
-- name: Read xcrun tool paths
-  command: xcrun --find {{ item }}
-  changed_when: false
-  loop: "{{ xcrun_tools }}"
-  register: xcrun_tool_paths_cmd
+- name: Copy pre-clone script
+  become: true
+  template:
+    src: pre-clone.sh
+    dest: /Users/{{ executor_user }}/bin/pre-clone.sh
+    owner: "{{ executor_user }}"
+    group: "{{ executor_user }}"
+    mode: 'u=rx,g=,o='
 
-- name: Set xcrun tool paths
-  set_fact:
-    xcrun_tool_paths: "{{ xcrun_tool_paths | default([]) + [item.stdout] }}"
-  loop: "{{ xcrun_tool_paths_cmd.results }}"
-  loop_control:
-    label: "{{ item.stdout }}"
+- name: Retrieve expanded pre-clone script
+  become: true
+  fetch:
+    src: /Users/{{ executor_user }}/bin/pre-clone.sh
+    dest: ../build
+  when: fetch_files
 
 - name: Copy setup-keychain script
   become: true
@@ -47,6 +51,16 @@
       - "{{ per_user_keychain_script }}"
   register: setup_keychain
 
+- name: Dump setup-keychain stdout
+  debug:
+    msg: "setup_keychain.stdout = {{ setup_keychain.stdout }}"
+  when: debug_provisioning
+
+- name: Dump setup-keychain stderr
+  debug:
+    msg: "setup_keychain.stderr = {{ setup_keychain.stderr }}"
+  when: debug_provisioning and setup_keychain.stderr != ""
+
 - name: Retrieve keychain
   become: true
   fetch:
@@ -58,10 +72,14 @@
 - name: Retrieve keychain dump
   become: true
   fetch:
-    src: /Users/{{ executor_user }}/dump-keychain.txt
+    src: "{{ per_user_keychain_dump }}"
     dest: ../build
   when: fetch_files
   ignore_errors: true
+
+# - pause:
+#     minutes: 60
+#   when: debug_provisioning
 
 - name: Check if keychain setup succeeded
   become: true

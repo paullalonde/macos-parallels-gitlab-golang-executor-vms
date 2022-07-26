@@ -20,34 +20,57 @@ security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
 echo "Set keychain settings to defaults (no auto-lock timeout, and no lock on sleep) ..."
 security set-keychain-settings "${KEYCHAIN}"
 
-echo "Importing certificate {{ cert.filename }} ..."
-security import ~/certs/"{{ cert.filename }}" \
-  -f pkcs12 -x \
-  -k "${KEYCHAIN}" \
-{% for path in xcrun_tool_paths %}
-  -T "{{ path | trim }}" \
-{% endfor %}
-  -P "{{ cert.password | trim }}" \
-  >/dev/null
-{% endfor %}
+echo "Set default keychain"
+security default-keychain -s "{{ keychain_path }}"
+{% for item in apple_certificates %}
 
-echo "Allowing Apple tools to access signing keys ..."
+echo "Importing certificate {{ item.filename }} ..."
+security import ~/certs/"{{ item.filename }}" \
+  -f pkcs12 -x \
+  -T /usr/bin/codesign \
+  -T /usr/bin/pkgbuild \
+  -T /usr/bin/productbuild \
+  -T /usr/bin/productsign \
+  -T /usr/bin/security \
+  -k "${KEYCHAIN}" \
+  -P "{{ item.password | trim }}" \
+  >/dev/null
 security set-key-partition-list \
   -S "apple-tool:,apple:,codesign:" \
   -s \
+  -l "{{ certificate_subjects[loop_index] }}" \
   -k "${KEYCHAIN_PASSWORD}" \
   "${KEYCHAIN}" \
   >/dev/null
+{% endfor %}
 {% for item in apple_developer_program_credentials %}
 
 {# WARNING: altool has a tendency to FAIL SILENTLY #}
-echo "Importing altool credentials for {{ item.username }} ..."
-xcrun altool --store-password-in-keychain-item "{{ altool_keychain_item }} ({{ item.username }})" \
 {% if altool_supports_keychain_option %}
-  --keychain "${KEYCHAIN}" \
-{% endif %}
+echo "Importing altool credentials for {{ item.username }} ..."
+xcrun altool --store-password-in-keychain-item "{{ altool_keychain_item }}  ({{ item.username }})" \
   -u "{{ item.username }}" \
-  -p "{{ item.password | trim }}"
+  -p "{{ item.password | trim }}" \
+  --keychain "${KEYCHAIN}"
+{% else %}
+{# I can't get 'altool --store-password-in-keychain-item' to work on Catalina; fallback to 'security add-generic-password' #}
+echo "Importing generic altool credentials for {{ item.username }} ..."
+security add-generic-password \
+  -s "{{ altool_keychain_item }} ({{ item.username }})" \
+  -l "{{ altool_keychain_item }} ({{ item.username }})" \
+  -a "{{ item.username }}" \
+  -p "{{ item.password | trim }}" \
+  -T $(xcrun --find altool) \
+  -T /usr/bin/security \
+  "${KEYCHAIN}"
+security set-generic-password-partition-list \
+  -S "apple-tool:,apple:" \
+  -s "{{ altool_keychain_item }} ({{ item.username }})" \
+  -a "{{ item.username }}" \
+  -k "${KEYCHAIN_PASSWORD}" \
+  "${KEYCHAIN}" \
+  >/dev/null
+{% endif %}
 {% if has_notarytool %}
 
 echo "Importing notarytool credentials for {{ item.username }} ..."
@@ -60,7 +83,8 @@ xcrun notarytool store-credentials "{{ notarytool_profile }} ({{ item.username }
 {% endfor %}
 {% if fetch_files %}
 
-security dump-keychain >${HOME}/dump-keychain.txt
+echo "Dumping keychain ..."
+security dump-keychain -a "${KEYCHAIN}" >"{{ per_user_keychain_dump }}"
 {% endif %}
 
 echo "Locking keychain ..."

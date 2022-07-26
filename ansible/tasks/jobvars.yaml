@@ -1,17 +1,17 @@
 ---
 
-- name: Copy job-variables script
+- name: Copy pre-build script
   become: true
   template:
-    src: setup-job-variables.sh
-    dest: /Users/{{ executor_user }}/bin/setup-job-variables.sh
+    src: pre-build.sh
+    dest: /Users/{{ executor_user }}/bin/pre-build.sh
     owner: "{{ executor_user }}"
     group: "{{ executor_user }}"
     mode: 'u=r,g=,o='
 
-- name: Retrieve expanded job-variables script
+- name: Retrieve expanded pre-build script
   become: true
   fetch:
-    src: /Users/{{ executor_user }}/bin/setup-job-variables.sh
+    src: /Users/{{ executor_user }}/bin/pre-build.sh
     dest: ../build
   when: fetch_files

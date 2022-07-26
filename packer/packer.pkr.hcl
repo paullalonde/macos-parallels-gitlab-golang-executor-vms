@@ -121,7 +121,7 @@ build {
   }
 
   provisioner "breakpoint" {
-    disable = false
+    disable = true
     note    = "FILES IN THE INPUT AND BUILD DIRECTORIES WILL BE DELETED AFTER THIS POINT."
   }
 

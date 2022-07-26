@@ -34,6 +34,8 @@
     - certs
     - go
     - go/bin
+    - Library
+    - Library/Preferences
 
 - name: Create bash profile
   become: true

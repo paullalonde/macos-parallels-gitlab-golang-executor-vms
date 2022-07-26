@@ -1,4 +1,4 @@
-# This file is meant to be source'd, typically from the Gitlab runner's pre_build_script.
+# This file is meant to be source'd, typically from the Gitlab runner's pre-build script.
 
 # Hashes of Apple certificates
 {% for item in apple_certificates %}

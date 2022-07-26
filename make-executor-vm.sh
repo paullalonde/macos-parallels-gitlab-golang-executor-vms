@@ -89,7 +89,6 @@ if [[ -n "${DOWNLOAD}" ]]; then
   packer build \
     -only 'download.*' \
     -timestamp-ui \
-    -var "os_name=${OS}" \
     -var-file="${CONF_FILE}" \
     "${PACKER_FILE}"
 fi
@@ -97,7 +96,6 @@ fi
 packer build \
   -only 'main.*' \
   -timestamp-ui \
-  -var "os_name=${OS}" \
   -var-file="${CONF_FILE}" \
   "${PACKER_FILE}"
 

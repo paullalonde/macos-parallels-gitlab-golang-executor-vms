@@ -61,4 +61,5 @@
       loop:
         - "{{ per_user_keychain_script }}"
         - "{{ per_user_keychain_sentinel }}"
+        - "{{ per_user_keychain_dump }}"
       listen: clean-user-keychain-files

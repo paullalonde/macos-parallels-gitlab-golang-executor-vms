@@ -28,7 +28,7 @@ So I need a build enviroment that has both macOS build tools (Xcode etc) and gol
 I don't use Xcode to manage the build process, though.
 Golang has its own suite of tools.
 
-#### In-VM secrets
+#### In-VM Secrets
 
 The VM produced herein contains secrets within a custom keychain.
 The keychain is protected by a password that is shared between this Gitlab executor and the Gitlab runner that invokes it.
@@ -64,18 +64,18 @@ The base VM must have the following characteristics:
 
 [This repository](https://github.com/paullalonde/macos-parallels-build-vms) can generate a suitable base VM.
 
-#### Gitlab runner
+## Gitlab Runner Integration
 
 Some coordination is required between this Gitlab executor and the Gitlab runner that invokes it.
 
-The Gitlab runner's pre-clone script need to do the following:
-  - Unlock the custom keychain.
-  - Add the custom keychain to the keychain search list,
-    so its items can be easily found by tools such as `codesign`.
-
-The Gitlab runner's pre-build script need to do the following:
-  - Source the file at `~/bin/setup-job-variables.sh`;
-    this file defines a number of envionment variables for use by Gitlab jobs.
+1. The VM produced herein needs to be available to the runner.
+1. The runner's pre-clone script needs to :
+   1. Create a `KEYCHAIN_PASSWORD` environment variable containing the custom keychain's password.
+   1. Call the script at `~/bin/pre-clone.sh`.
+      This will unlock the keychain.
+1. The runner's pre-build script needs to:
+   1. Source the script at `~/bin/pre-build.sh`.
+      This will populate the Gitlab job with executor-specific environment variables.
 
 ## Setup
 
@@ -88,9 +88,10 @@ The Gitlab runner's pre-build script need to do the following:
   - `base_vm_name` The name of the base VM, without any extension.
     Obviously, the base VM has to actually run the correct version of macOS.
   - `base_vm_url` The base URL for downloading the base VM.
+  - `os_name` The name of macOS (eg `catalina`, `big-sur`, `monterey`).
   - `ssh_password` The password of the packer account in the VM.
 
-#### Ansible Vault password
+#### Ansible Vault Password
 
 The [Ansible Vault](https://docs.ansible.com/ansible/latest/user_guide/vault.html) password
 is used to encrypt other secrets in Ansible files that get committed to source control.
@@ -105,7 +106,7 @@ is used to encrypt other secrets in Ansible files that get committed to source c
    export VAULT_PASSWORD=...
    ```
 
-#### Executor password
+#### Executor Password
 
 The `gitlab-executor` account, under which Gitlab jobs will run, needs a password.
 
@@ -119,7 +120,7 @@ The `gitlab-executor` account, under which Gitlab jobs will run, needs a passwor
 1. Edit the Ansible group variables file for the version of macOS, i.e. `ansible/conf/${os_name}.yaml`.
    Replace the value of the `executor_password` property with the contents of the `cipher.txt` file.
 
-#### Executor keychain password
+#### Executor Keychain Password
 
 The `gitlab-executor` account needs a password for its custom keychain.
 
@@ -133,7 +134,7 @@ The `gitlab-executor` account needs a password for its custom keychain.
 1. Edit the Ansible group variables file for the version of macOS, eg `ansible/conf/${os_name}.yaml`.
    Replace the value of the `keychain_password` property with the contents of the `cipher.txt` file.
 
-#### Apple certificates
+#### Apple Certificates
 
 1. Delete all of the files under `ansible/files/certificates`.
 1. In the `ansible/group_vars/all.yaml` file, delete all array elements under the `apple_certificates` property.
@@ -159,7 +160,7 @@ The `gitlab-executor` account needs a password for its custom keychain.
           codesign --sign "${MY_CERT_HASH}" ...
           ```
 
-#### Apple Developer Program (ADP) credentials
+#### Apple Developer Program (ADP) Credentials
 
 1. In the `ansible/group_vars/all.yaml` file, delete all array elements under the `apple_developer_program_credentials` property.
 1. For each credential you have:

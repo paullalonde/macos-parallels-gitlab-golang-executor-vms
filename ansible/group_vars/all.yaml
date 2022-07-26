@@ -6,6 +6,7 @@ executor_user: gitlab-executor
 
 update_homebrew: true
 fetch_files: false
+debug_provisioning: false
 
 # Software versions
 
@@ -66,13 +67,6 @@ apple_developer_program_credentials:
         keychain_item: APPLE_DEVELOPER_PROGRAM_ALTOOL_KEYCHAIN_ITEM
       notarytool:
         profile: APPLE_DEVELOPER_PROGRAM_NOTARYTOOL_KEYCHAIN_ITEM
-
-xcrun_tools:
-  - codesign
-  - pkgbuild
-  - productbuild
-  - productsign
-  - security
 
 altool_keychain_item: "ADP credentials for altool"
 notarytool_profile: "ADP credentials for notarytool"
