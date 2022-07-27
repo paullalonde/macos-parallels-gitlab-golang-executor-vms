@@ -12,19 +12,19 @@
     dest: /usr/local/bin/yq
     mode: 'u=rwx,g=rx,o=rx'
 
-# # Normally, the runner doesn't run in the executor. But for uploading artifacts, it needs to.
-# - name: Install Gitlab Runner {{ gitlab_runner_version }}
-#   get_url:
-#     url: https://gitlab-runner-downloads.s3.amazonaws.com/v{{ gitlab_runner_version }}/binaries/gitlab-runner-darwin-amd64
-#     dest: /usr/local/bin/gitlab-runner
-#     checksum: "sha256:{{ gitlab_runner_hash }}"
-#     mode: 'u=rwx,g=rx,o=rx'
-#
-# - name: Install Homebrew packages
-#   community.general.homebrew:
-#     name: "{{ item }}"
-#     update_homebrew: "{{ update_homebrew }}"
-#     upgrade_all: "{{ update_homebrew }}"
-#   loop:
-#     - coreutils
-#     - mitchellh/gon/gon # Need fixed version
+# Normally, the runner doesn't run in the executor. But for uploading artifacts, it needs to.
+- name: Install Gitlab Runner {{ gitlab_runner_version }}
+  get_url:
+    url: https://gitlab-runner-downloads.s3.amazonaws.com/v{{ gitlab_runner_version }}/binaries/gitlab-runner-darwin-amd64
+    dest: /usr/local/bin/gitlab-runner
+    checksum: "sha256:{{ gitlab_runner_hash }}"
+    mode: 'u=rwx,g=rx,o=rx'
+
+- name: Install Homebrew packages
+  community.general.homebrew:
+    name: "{{ item }}"
+    update_homebrew: "{{ update_homebrew }}"
+    upgrade_all: "{{ update_homebrew }}"
+  loop:
+    - coreutils
+    - mitchellh/gon/gon # Need fixed version
