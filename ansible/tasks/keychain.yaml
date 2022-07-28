@@ -51,12 +51,11 @@
       - "{{ per_user_keychain_script }}"
   register: setup_keychain
 
-- name: Dump setup-keychain stdout
+- name: Setup-keychain script output
   debug:
     msg: "setup_keychain.stdout = {{ setup_keychain.stdout }}"
-  when: debug_provisioning
 
-- name: Dump setup-keychain stderr
+- name: Setup-keychain script stderr
   debug:
     msg: "setup_keychain.stderr = {{ setup_keychain.stderr }}"
   when: debug_provisioning and setup_keychain.stderr != ""

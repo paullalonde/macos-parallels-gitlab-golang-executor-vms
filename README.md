@@ -88,7 +88,6 @@ Some coordination is required between this Gitlab executor and the Gitlab runner
   - `base_vm_name` The name of the base VM, without any extension.
     Obviously, the base VM has to actually run the correct version of macOS.
   - `base_vm_url` The base URL for downloading the base VM.
-  - `os_name` The name of macOS (eg `catalina`, `big-sur`, `monterey`).
   - `ssh_password` The password of the packer account in the VM.
 
 #### Ansible Vault Password
