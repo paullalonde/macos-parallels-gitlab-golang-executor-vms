@@ -16,6 +16,7 @@ golangci_lint_version: "1.46.2"
 gomega_version: "1.11.0"
 go_junit_report_version: "0.9.1"
 jq_version: "jq-1.5"
+junit2html_version: "30.1.3"
 yq_version: "3.4.1"
 
 gitlab_runner_version: "15.1.0"
@@ -66,7 +67,7 @@ apple_developer_program_credentials:
       altool:
         keychain_item: APPLE_DEVELOPER_PROGRAM_ALTOOL_KEYCHAIN_ITEM
       notarytool:
-        profile: APPLE_DEVELOPER_PROGRAM_NOTARYTOOL_KEYCHAIN_ITEM
+        profile: APPLE_DEVELOPER_PROGRAM_NOTARYTOOL_PROFILE
 
 altool_keychain_item: "ADP credentials for altool"
 notarytool_profile: "ADP credentials for notarytool"

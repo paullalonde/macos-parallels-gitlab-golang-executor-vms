@@ -12,6 +12,13 @@
     dest: /usr/local/bin/yq
     mode: 'u=rwx,g=rx,o=rx'
 
+- name: Install Pip Packages
+  become: true
+  ansible.builtin.pip:
+    name: "{{ item }}"
+  loop:
+    - junit2html=={{ junit2html_version }}
+
 # Normally, the runner doesn't run in the executor. But for uploading artifacts, it needs to.
 - name: Install Gitlab Runner {{ gitlab_runner_version }}
   get_url:
